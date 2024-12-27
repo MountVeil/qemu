@@ -560,13 +560,7 @@ static RISCVException pmp(CPURISCVState *env, int csrno)
 
 static RISCVException mttp(CPURISCVState* env, int csrno)
 {
-    if (!riscv_cpu_cfg(env)->ext_smsdid) {
-        return RISCV_EXCP_ILLEGAL_INST;
-    }
-    if (env->debugger) {
-        return RISCV_EXCP_NONE;
-    }
-    if (env->priv < PRV_M) {
+    if (!riscv_cpu_cfg(env)->ext_smsdid || env->priv < PRV_M) {
         return RISCV_EXCP_ILLEGAL_INST;
     }
     return RISCV_EXCP_NONE;
