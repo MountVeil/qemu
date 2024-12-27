@@ -778,6 +778,82 @@ static int get_physical_address_pmp(CPURISCVState *env, int *prot, hwaddr addr,
 }
 
 /*
+ * get_physical_address_smmtt - check SMMTT permission for this physical address
+ *
+ * Match the SMMTT region and check permission for this physical address and it's
+ * TLB page. Returns 0 if the permission checking was successful
+ *
+ * @env: CPURISCVState
+ * @prot: The returned protection attributes
+ * @addr: The physical address to be checked permission
+ * @access_type: The type of MMU access
+ * @mode: Indicates current privilege level.
+ */
+static int get_physical_address_smmtt(CPURISCVState* env, int* prot, hwaddr addr,
+                                    int size, MMUAccessType access_type,
+                                    int mode)
+{
+    int smmtt_priv;
+    bool smmtt_has_privs;
+
+    if (!riscv_cpu_cfg(env)->ext_smmtt) {
+        *prot = PAGE_READ | PAGE_WRITE | PAGE_EXEC;
+        return TRANSLATE_SUCCESS;
+    }
+
+    smmtt_has_privs = smmtt_hart_has_privs(env, addr, size, 1 << access_type,
+        &pmp_priv, mode);
+    if (!smmtt_has_privs) {
+        *prot = 0;
+        return TRANSLATE_SMMTT_FAIL;
+    }
+
+    *prot = smmtt_priv;
+
+    return TRANSLATE_SUCCESS;
+}
+
+/*
+ * get_physical_address_permission - check both PMP and SMMTT permission for this physical address
+ *
+ * Match the PMP&SMMTT region and check permission for this physical address and it's
+ * TLB page. Returns 0 if the permission checking was successful
+ *
+ * @env: CPURISCVState
+ * @prot: The returned protection attributes
+ * @addr: The physical address to be checked permission
+ * @access_type: The type of MMU access
+ * @mode: Indicates current privilege level.
+ */
+static int get_physical_address_permission(CPURISCVState* env, int* prot, hwaddr addr,
+                                            int size, MMUAccessType access_type,
+                                            int mode)
+
+{
+    int pmp_ret;
+    int smmtt_ret;
+    int pmp_prot = 0;
+    int smmtt_prot = 0;
+
+    pmp_ret = get_physical_address_pmp(env, &pmp_prot, addr,
+                                        size, access_type, mode);
+    if (pmp_ret != TRANSLATE_SUCCESS) {
+        *prot = pmp_prot;
+        return pmp_ret;
+    }
+
+    smmtt_ret=get_physical_address_smmtt(env, &smmtt_prot, addr,
+                                        size, access_type, mode);
+
+    *prot = pmp_prot & smmtt_prot;
+    if (smmtt_ret != TRANSLATE_SUCCESS) {
+        return smmtt_ret;
+    }
+
+    return TRANSLATE_SUCCESS;
+}
+
+/*
  * get_physical_address - get the physical address for this virtual address
  *
  * Do a page table walk to obtain the physical address corresponding to a
@@ -963,9 +1039,9 @@ restart:
         }
 
         int pmp_prot;
-        int pmp_ret = get_physical_address_pmp(env, &pmp_prot, pte_addr,
-                                               sizeof(target_ulong),
-                                               MMU_DATA_LOAD, PRV_S);
+        int pmp_ret = get_physical_address_permission(env, &pmp_prot, pte_addr,
+                                                      sizeof(target_ulong),
+                                                      MMU_DATA_LOAD, PRV_S);
         if (pmp_ret != TRANSLATE_SUCCESS) {
             return TRANSLATE_PMP_FAIL;
         }
@@ -1369,8 +1445,8 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
             prot &= prot2;
 
             if (ret == TRANSLATE_SUCCESS) {
-                ret = get_physical_address_pmp(env, &prot_pmp, pa,
-                                               size, access_type, mode);
+                ret = get_physical_address_permission(env, &prot_pmp, pa,
+                                                      size, access_type, mode);
                 tlb_size = pmp_get_tlb_size(env, pa);
 
                 qemu_log_mask(CPU_LOG_MMU,
@@ -1403,8 +1479,8 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                       __func__, address, ret, pa, prot);
 
         if (ret == TRANSLATE_SUCCESS) {
-            ret = get_physical_address_pmp(env, &prot_pmp, pa,
-                                           size, access_type, mode);
+            ret = get_physical_address_permission(env, &prot_pmp, pa,
+                                                  size, access_type, mode);
             tlb_size = pmp_get_tlb_size(env, pa);
 
             qemu_log_mask(CPU_LOG_MMU,
