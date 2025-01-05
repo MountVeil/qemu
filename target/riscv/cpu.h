@@ -155,6 +155,7 @@ extern RISCVCPUImpliedExtsRule *riscv_multi_ext_implied_rules[];
 #if !defined(CONFIG_USER_ONLY)
 #include "pmp.h"
 #include "debug.h"
+#include "smmtt.h"
 #endif
 
 #define RV_VLEN_MAX 1024

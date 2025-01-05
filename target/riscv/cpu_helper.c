@@ -802,7 +802,7 @@ static int get_physical_address_smmtt(CPURISCVState* env, int* prot, hwaddr addr
     }
 
     smmtt_has_privs = smmtt_hart_has_privs(env, addr, size, 1 << access_type,
-        &pmp_priv, mode);
+        &smmtt_priv, mode);
     if (!smmtt_has_privs) {
         *prot = 0;
         return TRANSLATE_SMMTT_FAIL;
