@@ -169,7 +169,7 @@ bool smmtt_hart_has_privs(CPURISCVState* env, hwaddr addr,
         case 1:
             // Do nothing but need to find the right entry.
         case 0:
-            switch (get_field(entry.mtt_l1,0b1111 << index))
+            switch (get_field(entry.mtt_l1, MTT_PERM_MASK << index))
             {
             case 0b0000:
                 *allowed_privs = 0;
