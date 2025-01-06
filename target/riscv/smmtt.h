@@ -108,16 +108,25 @@ static const unsigned int mtt_shifts[] = {
 #endif
 
 #if defined(TARGET_RISCV32)
-#define MTT_ADDRESS_BYTES         4
+#define MTT_ADDRESS_BYTES           4
 #elif defined(TARGET_RISCV64)
-#define MTT_ADDRESS_BYTES         8
+#define MTT_ADDRESS_BYTES           8
 #endif
 
-#define MTT_L2_2M_PAGES_SHIFT     21
-#define MTT_L2_4M_PAGES_SHIFT     22
+#define MTT_L2_2M_PAGES_SHIFT       21
+#define MTT_L2_4M_PAGES_SHIFT       22
 
-#define MTT_L2_XM_PAGES_MASK      0b11
-#define MTT_PERM_MASK             0b1111
+#define MTT_L2_XM_PAGES_MASK        0b11
+#define MTT_L2_XM_PAGES_DISALLOW    0b00
+#define MTT_L2_XM_PAGES_ALLOW_RX    0b01
+#define MTT_L2_XM_PAGES_ALLOW_RW    0b10
+#define MTT_L2_XM_PAGES_ALLOW_RWX   0b11
+
+#define MTT_PERM_MASK               0b1111
+#define MTT_PERM_DISALLOW           0b0000
+#define MTT_PERM_ALLOW_RX           0b0001
+#define MTT_PERM_ALLOW_RW           0b0010
+#define MTT_PERM_ALLOW_RWX          0b0011
 
 typedef enum {
     SMMTT_TYPE_1G_DISALLOW = 0b000,

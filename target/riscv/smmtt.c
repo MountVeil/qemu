@@ -77,19 +77,19 @@ static int smmtt_decode_mtt_l2(hwaddr* mtt_ppn, hwaddr addr,
         *find = true;
         switch (get_field(entry.mtt_l2.info, MTT_L2_XM_PAGES_MASK << index))
         {
-        case 0b00:
+        case MTT_L2_XM_PAGES_DISALLOW:
             *find = true;
             *privs = 0;
             break;
-        case 0b01:
+        case MTT_L2_XM_PAGES_ALLOW_RX:
             *find = true;
             *privs = (PAGE_READ | PAGE_EXEC);
             break;
-        case 0b10:
+        case MTT_L2_XM_PAGES_ALLOW_RW:
             *find = true;
             *privs = (PAGE_READ | PAGE_WRITE);
             break;
-        case 0b11:
+        case MTT_L2_XM_PAGES_ALLOW_RWX:
             *find = true;
             *privs = (PAGE_READ | PAGE_WRITE | PAGE_EXEC);
             break;
@@ -171,16 +171,16 @@ bool smmtt_hart_has_privs(CPURISCVState* env, hwaddr addr,
         case 0:
             switch (get_field(entry.mtt_l1, MTT_PERM_MASK << index))
             {
-            case 0b0000:
+            case MTT_PERM_DISALLOW:
                 *allowed_privs = 0;
                 break;
-            case 0b0001:
+            case MTT_PERM_ALLOW_RX:
                 *allowed_privs = (PAGE_READ | PAGE_EXEC);
                 break;
-            case 0b0010:
+            case MTT_PERM_ALLOW_RW:
                 *allowed_privs = (PAGE_READ | PAGE_WRITE);
                 break;
-            case 0b0011:
+            case MTT_PERM_ALLOW_RWX:
                 *allowed_privs = (PAGE_READ | PAGE_WRITE | PAGE_EXEC);
                 break;
             default:
