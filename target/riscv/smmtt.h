@@ -107,12 +107,6 @@ static const unsigned int mtt_shifts[] = {
 };
 #endif
 
-#if defined(TARGET_RISCV32)
-#define MTT_ADDRESS_BYTES           4
-#elif defined(TARGET_RISCV64)
-#define MTT_ADDRESS_BYTES           8
-#endif
-
 #define MTT_L2_2M_PAGES_SHIFT       21
 #define MTT_L2_4M_PAGES_SHIFT       22
 
@@ -150,16 +144,6 @@ typedef struct {
     uint64_t type : 2;
     uint64_t zero : 18;
 } smmtt_l2_t;
-
-/*
- * Need a entry union to complete a MTT search
- */
-typedef union {
-    uint64_t base;
-    smmtt_l3_t mtt_l3;
-    smmtt_l2_t mtt_l2;
-    smmtt_l1 mtt_l1;
-} smmtt_entry;
 
 bool smmtt_hart_has_privs(CPURISCVState* env, hwaddr addr,
                           target_ulong size, int privs,

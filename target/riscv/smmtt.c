@@ -13,6 +13,16 @@
 #include "exec/page-protection.h"
 #include "smmtt.h"
 
+ /*
+  * Need a entry union to complete a MTT search
+  */
+typedef union {
+    uint64_t base;
+    smmtt_l3_t mtt_l3;
+    smmtt_l2_t mtt_l2;
+    smmtt_l1 mtt_l1;
+} smmtt_entry;
+
 static int smmtt_decode_mttp(CPURISCVState* env, int* level) {
     smmtt_mode_t mode = get_field(env->mttp, MTTP_MODE_MASK);
 
@@ -145,7 +155,7 @@ bool smmtt_hart_has_privs(CPURISCVState* env, hwaddr addr,
     for (;level >= 0 && !find;level--) {
         index = (addr & mtt_masks[level]) >> mtt_shifts[level];
         if (level != 0) {
-            mtt_ppn = mtt_ppn + index * MTT_ADDRESS_BYTES;
+            mtt_ppn = mtt_ppn + index * sizeof(target_long);
             entry.base = address_space_ldl(cs->as, mtt_ppn, MEMTXATTRS_UNSPECIFIED, &r);
         }
 

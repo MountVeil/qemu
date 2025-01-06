@@ -802,7 +802,7 @@ static int get_physical_address_smmtt(CPURISCVState* env, int* prot, hwaddr addr
     }
 
     smmtt_has_privs = smmtt_hart_has_privs(env, addr, size, 1 << access_type,
-        &smmtt_priv, mode);
+                                           &smmtt_priv, mode);
     if (!smmtt_has_privs) {
         *prot = 0;
         return TRANSLATE_SMMTT_FAIL;
@@ -842,8 +842,8 @@ static int get_physical_address_permission(CPURISCVState* env, int* prot, hwaddr
         return pmp_ret;
     }
 
-    smmtt_ret=get_physical_address_smmtt(env, &smmtt_prot, addr,
-                                        size, access_type, mode);
+    smmtt_ret = get_physical_address_smmtt(env, &smmtt_prot, addr,
+                                           size, access_type, mode);
 
     *prot = pmp_prot & smmtt_prot;
     if (smmtt_ret != TRANSLATE_SUCCESS) {
