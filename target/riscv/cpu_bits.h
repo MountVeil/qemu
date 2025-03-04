@@ -351,7 +351,7 @@
 #define CSR_PMPADDR15       0x3bf
 
 /* Supervisor domains extension registers */
-#define CSR_MTTP            0x3e0
+#define CSR_MTTP            0x3f0
 
 /* Debug/Trace Registers (shared with Debug Mode) */
 #define CSR_TSELECT         0x7a0
