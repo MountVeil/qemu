@@ -156,7 +156,7 @@ bool smmtt_hart_has_privs(CPURISCVState* env, hwaddr addr,
         index = (addr & mtt_masks[level]) >> mtt_shifts[level];
         if (level != 0) {
             mtt_ppn = mtt_ppn + index * sizeof(target_long);
-            entry.base = address_space_ldl(cs->as, mtt_ppn, MEMTXATTRS_UNSPECIFIED, &r);
+            entry.base = address_space_ldq(cs->as, mtt_ppn, MEMTXATTRS_UNSPECIFIED, &r);
         }
 
         switch (level)
