@@ -13,7 +13,7 @@ typedef enum {
     SMMTT_BARE = 0,
 #if defined(TARGET_RISCV32)
     SMMTT_34,
-#elif defined(TARGET_RISCV64)
+#else
     SMMTT_46,
     SMMTT_56
 #endif
@@ -41,7 +41,7 @@ typedef enum {
 #define MTTP_PPN_MASK			MTTP32_PPN_MASK
 #define MTTP_MODE_SHIFT			MTTP32_MODE_SHIFT
 #define MTTP_SDID_SHIFT			MTTP32_SDID_SHIFT
-#elif defined(TARGET_RISCV64)
+#else
 #define MTTP_MODE_MASK			MTTP64_MODE_MASK
 #define MTTP_SDID_MASK			MTTP64_SDID_MASK
 #define MTTP_PPN_MASK			MTTP64_PPN_MASK
@@ -71,7 +71,7 @@ typedef enum {
 static const unsigned long long mtt_masks[] = {
         MTT_L1_PAGE_MASK, MTT_L1_MASK, MTT_L2_MASK
 };
-#elif defined(TARGET_RISCV64)
+#else
 #define MTT_L3_MASK               MTT64_L3_MASK
 #define MTT_L2_MASK               MTT64_L2_MASK
 #define MTT_L1_MASK               MTT64_L1_MASK
@@ -97,7 +97,7 @@ static const unsigned long long mtt_masks[] = {
 static const unsigned int mtt_shifts[] = {
         MTT_L1_PAGE_SHIFT, MTT_L1_SHIFT, MTT_L2_SHIFT
 };
-#elif defined(TARGET_RISCV64)
+#else
 #define MTT_L3_SHIFT              MTT64_L3_SHIFT
 #define MTT_L2_SHIFT              MTT64_L2_SHIFT
 #define MTT_L1_SHIFT              MTT64_L1_SHIFT
@@ -138,12 +138,19 @@ typedef struct {
 } smmtt_l3_t;
 
 typedef uint64_t smmtt_l1;
-
+#if defined(TARGET_RISCV32)
+typedef struct {
+    uint64_t info : 22;
+    uint64_t type : 3;
+    uint64_t zero : 7;
+} smmtt_l2_t;
+#else
 typedef struct {
     uint64_t info : 44;
-    uint64_t type : 2;
-    uint64_t zero : 18;
+    uint64_t type : 3;
+    uint64_t zero : 17;
 } smmtt_l2_t;
+#endif
 
 bool smmtt_hart_has_privs(CPURISCVState* env, hwaddr addr,
                           target_ulong size, int privs,
