@@ -22,31 +22,18 @@ typedef enum {
 /*
  * MTTP CSR MASK and SHIFT
  */
-
-#define MTTP32_MODE_MASK	    (0x3ULL << 30)
-#define MTTP32_SDID_MASK	    (0x3FULL << 24)
-#define MTTP32_PPN_MASK	        (0x3FFFFFULL)
-#define MTTP32_MODE_SHIFT		30
-#define MTTP32_SDID_SHIFT		24
-
-#define MTTP64_MODE_MASK	    (0xFULL << 60)
-#define MTTP64_SDID_MASK	    (0x3FULL << 54)
-#define MTTP64_PPN_MASK		    (0x00000FFFFFFFFFFFULL)
-#define MTTP64_MODE_SHIFT		60
-#define MTTP64_SDID_SHIFT		54
-
 #if defined(TARGET_RISCV32)
-#define MTTP_MODE_MASK			MTTP32_MODE_MASK
-#define MTTP_SDID_MASK			MTTP32_SDID_MASK
-#define MTTP_PPN_MASK			MTTP32_PPN_MASK
-#define MTTP_MODE_SHIFT			MTTP32_MODE_SHIFT
-#define MTTP_SDID_SHIFT			MTTP32_SDID_SHIFT
+#define MTTP_MODE_MASK	    (0x3ULL << 30)
+#define MTTP_SDID_MASK	    (0x3FULL << 24)
+#define MTTP_PPN_MASK	    (0x3FFFFFULL)
+#define MTTP_MODE_SHIFT		30
+#define MTTP_SDID_SHIFT		24
 #else
-#define MTTP_MODE_MASK			MTTP64_MODE_MASK
-#define MTTP_SDID_MASK			MTTP64_SDID_MASK
-#define MTTP_PPN_MASK			MTTP64_PPN_MASK
-#define MTTP_MODE_SHIFT			MTTP64_MODE_SHIFT
-#define MTTP_SDID_SHIFT			MTTP64_SDID_SHIFT
+#define MTTP_MODE_MASK	    (0xFULL << 60)
+#define MTTP_SDID_MASK	    (0x3FULL << 54)
+#define MTTP_PPN_MASK		(0x00000FFFFFFFFFFFULL)
+#define MTTP_MODE_SHIFT		60
+#define MTTP_SDID_SHIFT		54
 #endif
 
 
@@ -54,58 +41,31 @@ typedef enum {
  * MTT MASK and SHIFT
  * This will help find the right index in different MTT level.
  */
-
-#define MTT32_L2_MASK             (0x1FFULL << 25)
-#define MTT32_L1_MASK             (0x3FF << 15)
-#define MTT32_L1_PAGE_MASK        (0x7 << 12)
-
-#define MTT64_L3_MASK             (0x3FFULL << 46)
-#define MTT64_L2_MASK             (0x1FFFFFULL << 25)
-#define MTT64_L1_MASK             (0x1FF << 16)
-#define MTT64_L1_PAGE_MASK        (0xF << 12)
-
 #if defined(TARGET_RISCV32)
-#define MTT_L2_MASK               MTT32_L2_MASK
-#define MTT_L1_MASK               MTT32_L1_MASK
-#define MTT_L1_PAGE_MASK          MTT32_L1_PAGE_MASK
-static const unsigned long long mtt_masks[] = {
-        MTT_L1_PAGE_MASK, MTT_L1_MASK, MTT_L2_MASK
-};
+#define MTT_L2_MASK             (0x1FFULL << 25)
+#define MTT_L1_MASK             (0x3FF << 15)
+#define MTT_L1_PAGE_MASK        (0x7 << 12)
 #else
-#define MTT_L3_MASK               MTT64_L3_MASK
-#define MTT_L2_MASK               MTT64_L2_MASK
-#define MTT_L1_MASK               MTT64_L1_MASK
-#define MTT_L1_PAGE_MASK          MTT64_L1_PAGE_MASK
-static const unsigned long long mtt_masks[] = {
-        MTT_L1_PAGE_MASK, MTT_L1_MASK, MTT_L2_MASK, MTT_L3_MASK
-};
+#define MTT_L3_MASK             (0x3FFULL << 46)
+#define MTT_L2_MASK             (0x1FFFFFULL << 25)
+#define MTT_L1_MASK             (0x1FF << 16)
+#define MTT_L1_PAGE_MASK        (0xF << 12)
 #endif
 
-#define MTT32_L2_SHIFT            25
-#define MTT32_L1_SHIFT            15
-#define MTT32_L1_PAGE_SHIFT       12
-
-#define MTT64_L3_SHIFT            46
-#define MTT64_L2_SHIFT            25
-#define MTT64_L1_SHIFT            16
-#define MTT64_L1_PAGE_SHIFT       12
-
-#if defined(TARGET_RISCV32)
-#define MTT_L2_SHIFT              MTT32_L2_SHIFT
-#define MTT_L1_SHIFT              MTT32_L1_SHIFT
-#define MTT_L1_PAGE_SHIFT         MTT32_L1_PAGE_SHIFT
-static const unsigned int mtt_shifts[] = {
-        MTT_L1_PAGE_SHIFT, MTT_L1_SHIFT, MTT_L2_SHIFT
+static const unsigned long long mtt_masks[] = {
+        MTT_L1_PAGE_MASK,
+        MTT_L1_MASK,
+        MTT_L2_MASK,
+        #if defined(TARGET_RISCV64)
+        MTT_L3_MASK
+        #endif
 };
-#else
-#define MTT_L3_SHIFT              MTT64_L3_SHIFT
-#define MTT_L2_SHIFT              MTT64_L2_SHIFT
-#define MTT_L1_SHIFT              MTT64_L1_SHIFT
-#define MTT_L1_PAGE_SHIFT         MTT64_L1_PAGE_SHIFT
-static const unsigned int mtt_shifts[] = {
-        MTT_L1_PAGE_SHIFT, MTT_L1_SHIFT, MTT_L2_SHIFT, MTT_L3_SHIFT
-};
-#endif
+
+#define MTT_PERMS_MASK  (0b11ULL)
+#define MTT_PERMS_BITS  (2)
+
+#define MTT_PERM_FIELD(idx) \
+    MTT_PERMS_MASK << (MTT_PERMS_BITS * (idx))
 
 #define MTT_L2_2M_PAGES_SHIFT       21
 #define MTT_L2_4M_PAGES_SHIFT       22
@@ -116,7 +76,7 @@ static const unsigned int mtt_shifts[] = {
 #define MTT_L2_XM_PAGES_ALLOW_RW    0b10
 #define MTT_L2_XM_PAGES_ALLOW_RWX   0b11
 
-#define MTT_PERM_MASK               0b1111
+#define MTT_PERM_MASK               0b0011
 #define MTT_PERM_DISALLOW           0b0000
 #define MTT_PERM_ALLOW_RX           0b0001
 #define MTT_PERM_ALLOW_RW           0b0010
@@ -131,6 +91,13 @@ typedef enum {
     SMMTT_TYPE_4M_PAGES = 0b101,
     SMMTT_TYPE_2M_PAGES = 0b110
 } smmtt_l2_type;
+
+typedef enum {
+    SMMTT_PERMS_MTT_L1_DIR_DISALLOWED = 0b00,
+    SMMTT_PERMS_MTT_L1_DIR_ALLOW_RX = 0b01,
+    SMMTT_PERMS_MTT_L1_DIR_ALLOW_RW = 0b10,
+    SMMTT_PERMS_MTT_L1_DIR_ALLOW_RWX = 0b11,
+} smmtt_perms_mtt_l1_dir_t;
 
 typedef struct {
     uint64_t mtt_l2_ppn : 44;

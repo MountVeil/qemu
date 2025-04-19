@@ -51,6 +51,34 @@ static int smmtt_decode_mttp(CPURISCVState* env, int* level) {
     return 0;
 }
 
+static int mttl1_privs_from_perms(uint64_t perms, int* privs)
+{
+    switch ((smmtt_perms_mtt_l1_dir_t)perms) {
+    case MTT_PERM_DISALLOW:
+        *privs = 0;
+        break;
+    case MTT_PERM_ALLOW_RX:
+        *privs = (PAGE_READ | PAGE_EXEC);
+        break;
+    case MTT_PERM_ALLOW_RW:
+        *privs = (PAGE_READ | PAGE_WRITE);
+        break;
+    case MTT_PERM_ALLOW_RWX:
+        *privs = (PAGE_READ | PAGE_WRITE | PAGE_EXEC);
+        break;
+    }
+    return 0;
+}
+
+static int smmtt_decode_mtt_l1(hwaddr addr, smmtt_l1 entry, int* privs)
+{
+    target_ulong offset = get_field(addr, MTT_L1_PAGE_MASK);
+    uint64_t field = MTT_PERM_FIELD(offset);
+    uint64_t perms = get_field(entry, field);
+
+    return mttl1_privs_from_perms(perms, privs);
+}
+
 static int smmtt_decode_mtt_l2(hwaddr* mtt_ppn, hwaddr addr,
                         int* privs, bool* find, smmtt_entry entry) {
     smmtt_l2_type type = (smmtt_l2_type)entry.mtt_l2.type;
@@ -152,12 +180,10 @@ bool smmtt_hart_has_privs(CPURISCVState* env, hwaddr addr,
         .base = 0,
     };
     // Find mtt leaf node
-    for (;level >= 0 && !find;level--) {
-        index = (addr & mtt_masks[level]) >> mtt_shifts[level];
-        if (level != 0) {
-            mtt_ppn = mtt_ppn + index * sizeof(target_long);
-            entry.base = address_space_ldq(cs->as, mtt_ppn, MEMTXATTRS_UNSPECIFIED, &r);
-        }
+    for (;level > 0 && !find;level--) {
+        index = get_field(addr, mtt_masks[level]);
+        mtt_ppn = mtt_ppn + index * sizeof(target_long);
+        entry.base = address_space_ldq(cs->as, mtt_ppn, MEMTXATTRS_UNSPECIFIED, &r);
 
         switch (level)
         {
@@ -177,25 +203,9 @@ bool smmtt_hart_has_privs(CPURISCVState* env, hwaddr addr,
             }
             break;
         case 1:
-            // Do nothing but need to find the right entry.
-        case 0:
-            switch ((entry.mtt_l1 >> (index * 4)) & MTT_PERM_MASK)
-            {
-            case MTT_PERM_DISALLOW:
-                *allowed_privs = 0;
-                break;
-            case MTT_PERM_ALLOW_RX:
-                *allowed_privs = (PAGE_READ | PAGE_EXEC);
-                break;
-            case MTT_PERM_ALLOW_RW:
-                *allowed_privs = (PAGE_READ | PAGE_WRITE);
-                break;
-            case MTT_PERM_ALLOW_RWX:
-                *allowed_privs = (PAGE_READ | PAGE_WRITE | PAGE_EXEC);
-                break;
-            default:
+            ret = smmtt_decode_mtt_l1(addr, entry.mtt_l1, allowed_privs);
+            if (ret < 0) {
                 return false;
-                break;
             }
         default:
             break;
