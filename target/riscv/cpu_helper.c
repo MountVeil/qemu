@@ -1498,7 +1498,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
         }
     }
 
-    if (ret == TRANSLATE_PMP_FAIL) {
+    if (ret == TRANSLATE_PMP_FAIL||ret == TRANSLATE_SMMTT_FAIL) {
         pmp_violation = true;
     }
 
