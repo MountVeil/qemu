@@ -123,4 +123,8 @@ bool smmtt_hart_has_privs(CPURISCVState* env, hwaddr addr,
                           target_ulong size, int privs,
                           int *allowed_privs, target_ulong mode);
 
+bool check_mtt_permission(CPURISCVState *env, hwaddr pa,
+                          target_ulong size, int required_privs,
+                          int *allowed_privs, target_ulong mode);
+
 #endif

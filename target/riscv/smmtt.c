@@ -12,6 +12,7 @@
 #include "exec/exec-all.h"
 #include "exec/page-protection.h"
 #include "smmtt.h"
+#include "mtt_cache.h"
 
  /*
   * Need a entry union to complete a MTT search
@@ -22,6 +23,79 @@ typedef union {
     smmtt_l2_t mtt_l2;
     smmtt_l1 mtt_l1;
 } smmtt_entry;
+
+bool check_mtt_permission(CPURISCVState *env, hwaddr pa,
+                          target_ulong size, int required_privs,
+                          int *allowed_privs, target_ulong mode)
+{
+    uint8_t sdid = (env->mttp) >> MTTP_SDID_SHIFT;
+
+    int mtt_access = -1;
+    if (required_privs == PAGE_READ) mtt_access = ACCESS_LOAD;
+    else if (required_privs == PAGE_WRITE) mtt_access = ACCESS_STORE;
+    else if (required_privs == PAGE_EXEC) mtt_access = ACCESS_FETCH;
+
+    // check cache
+    if (mtt_cache_lookup(pa, sdid, mtt_access)) {
+        if (allowed_privs) {
+            *allowed_privs = 0;
+            if (mtt_access == ACCESS_LOAD)  *allowed_privs |= PAGE_READ;
+            if (mtt_access == ACCESS_STORE) *allowed_privs |= PAGE_WRITE;
+            if (mtt_access == ACCESS_FETCH) *allowed_privs |= PAGE_EXEC;
+        }
+        return true;
+    }
+
+    // cache miss → fallback to MTT walk
+    bool ok = smmtt_hart_has_privs(env, pa, size, required_privs,
+                                   allowed_privs, mode);
+
+    if (ok) {
+        uint8_t perms = 0;
+        if (*allowed_privs & PAGE_READ)  perms |= PERM_R;
+        if (*allowed_privs & PAGE_WRITE) perms |= PERM_W;
+        if (*allowed_privs & PAGE_EXEC)  perms |= PERM_X;
+        mtt_cache_insert(pa, sdid, perms);
+    }
+
+    return ok;
+}
+
+// bool check_mtt_permission(CPURISCVState *env, hwaddr pa,
+//                           target_ulong size, int required_privs,
+//                           int *allowed_privs, target_ulong mode)
+// {
+//     uint8_t sdid = (env->mttp) >> MTTP_SDID_SHIFT;
+
+//     int mtt_access = -1;
+//     if (required_privs == PAGE_READ) mtt_access = ACCESS_LOAD;
+//     else if (required_privs == PAGE_WRITE) mtt_access = ACCESS_STORE;
+//     else if (required_privs == PAGE_EXEC) mtt_access = ACCESS_FETCH;
+
+//     // cache
+//     if (mtt_cache_lookup(pa, sdid, mtt_access)) {
+//         uint8_t perms = 0;
+//         if (mtt_access == ACCESS_LOAD)  perms |= PERM_R;
+//         if (mtt_access == ACCESS_STORE) perms |= PERM_W;
+//         if (mtt_access == ACCESS_FETCH) perms |= PERM_X;
+//         return true;
+//     }
+
+//     // cache miss，lookup MTT
+//     bool ok = smmtt_hart_has_privs(env, pa, size, required_privs,
+//                                    allowed_privs, mode);
+
+//     if (ok) {
+//         uint8_t perms = 0;
+//         if (*allowed_privs & PAGE_READ)  perms |= PERM_R;
+//         if (*allowed_privs & PAGE_WRITE) perms |= PERM_W;
+//         if (*allowed_privs & PAGE_EXEC)  perms |= PERM_X;
+
+//         mtt_cache_insert(pa, sdid, perms);
+//     }
+
+//     return ok;
+// }
 
 static int smmtt_decode_mttp(CPURISCVState* env, int* level) {
     smmtt_mode_t mode = get_field(env->mttp, MTTP_MODE_MASK);

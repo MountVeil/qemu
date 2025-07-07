@@ -33,6 +33,8 @@
 #include "cpu_bits.h"
 #include "debug.h"
 #include "tcg/oversized-guest.h"
+#include "smmtt.h"
+#include "mtt_cache.h"
 
 int riscv_env_mmu_index(CPURISCVState *env, bool ifetch)
 {
@@ -801,8 +803,12 @@ static int get_physical_address_smmtt(CPURISCVState* env, int* prot, hwaddr addr
         return TRANSLATE_SUCCESS;
     }
 
-    smmtt_has_privs = smmtt_hart_has_privs(env, addr, size, 1 << access_type,
-                                           &smmtt_priv, mode);
+    // if we do not need smmtt cache, we can use smmtt_has_privs directly.
+    // smmtt_has_privs = smmtt_hart_has_privs(env, addr, size, 1 << access_type,
+    //                                         &smmtt_priv, mode);
+    smmtt_has_privs = check_mtt_permission(env, addr, size, 1 << access_type,
+                                            &smmtt_priv, mode);
+
     if (!smmtt_has_privs) {
         *prot = 0;
         return TRANSLATE_SMMTT_FAIL;
@@ -1391,7 +1397,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
     CPURISCVState *env = &cpu->env;
     vaddr im_address;
     hwaddr pa = 0;
-    int prot, prot2, prot_pmp;
+    int prot, prot2, total_prot;
     bool pmp_violation = false;
     bool first_stage_error = true;
     bool two_stage_lookup = mmuidx_2stage(mmu_idx);
@@ -1445,16 +1451,16 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
             prot &= prot2;
 
             if (ret == TRANSLATE_SUCCESS) {
-                ret = get_physical_address_permission(env, &prot_pmp, pa,
+                ret = get_physical_address_permission(env, &total_prot, pa,
                                                       size, access_type, mode);
                 tlb_size = pmp_get_tlb_size(env, pa);
 
                 qemu_log_mask(CPU_LOG_MMU,
                               "%s PMP address=" HWADDR_FMT_plx " ret %d prot"
                               " %d tlb_size " TARGET_FMT_lu "\n",
-                              __func__, pa, ret, prot_pmp, tlb_size);
+                              __func__, pa, ret, total_prot, tlb_size);
 
-                prot &= prot_pmp;
+                prot &= total_prot;
             } else {
                 /*
                  * Guest physical address translation failed, this is a HS
@@ -1479,16 +1485,16 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                       __func__, address, ret, pa, prot);
 
         if (ret == TRANSLATE_SUCCESS) {
-            ret = get_physical_address_permission(env, &prot_pmp, pa,
+            ret = get_physical_address_permission(env, &total_prot, pa,
                                                   size, access_type, mode);
             tlb_size = pmp_get_tlb_size(env, pa);
 
             qemu_log_mask(CPU_LOG_MMU,
                           "%s PMP address=" HWADDR_FMT_plx " ret %d prot"
                           " %d tlb_size " TARGET_FMT_lu "\n",
-                          __func__, pa, ret, prot_pmp, tlb_size);
+                          __func__, pa, ret, total_prot, tlb_size);
 
-            prot &= prot_pmp;
+            prot &= total_prot;
         }
     }
 
@@ -1809,6 +1815,33 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         /* ecall is dispatched as one cause so translate based on mode */
         if (cause == RISCV_EXCP_U_ECALL) {
             assert(env->priv <= 3);
+            target_ulong syscall_num = env->gpr[17];  // a7
+
+            if (syscall_num == 0xCAFE) {
+                // 清零统计
+                mtt_hits = 0;
+                mtt_misses = 0;
+                printf("[QEMU] MTT cache stats reset.\n");
+
+                env->pc += 4;
+                return;
+            }
+
+            if (syscall_num == 0xDEAD) {
+                // 打印统计
+                uint64_t total = mtt_hits + mtt_misses;
+                double hit_rate = total ? ((double)mtt_hits / total) * 100.0 : 0.0;
+
+                printf("[QEMU] MTT cache stats:\n");
+                printf("  Hits    : %lu\n", mtt_hits);
+                printf("  Misses  : %lu\n", mtt_misses);
+                printf("  Hit Rate: %.2f%%\n", hit_rate);
+
+                env->gpr[10] = mtt_hits;
+
+                env->pc += 4;
+                return;
+            }
 
             if (env->priv == PRV_M) {
                 cause = RISCV_EXCP_M_ECALL;
