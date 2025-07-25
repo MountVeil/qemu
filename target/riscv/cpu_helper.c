@@ -35,6 +35,7 @@
 #include "tcg/oversized-guest.h"
 #include "smmtt.h"
 #include "mtt_cache.h"
+#include "time.h"
 
 int riscv_env_mmu_index(CPURISCVState *env, bool ifetch)
 {
@@ -804,10 +805,10 @@ static int get_physical_address_smmtt(CPURISCVState* env, int* prot, hwaddr addr
     }
 
     // if we do not need smmtt cache, we can use smmtt_has_privs directly.
-    // smmtt_has_privs = smmtt_hart_has_privs(env, addr, size, 1 << access_type,
-    //                                         &smmtt_priv, mode);
-    smmtt_has_privs = check_mtt_permission(env, addr, size, 1 << access_type,
+    smmtt_has_privs = smmtt_hart_has_privs(env, addr, size, 1 << access_type,
                                             &smmtt_priv, mode);
+    // smmtt_has_privs = check_mtt_permission(env, addr, size, 1 << access_type,
+    //                                         &smmtt_priv, mode);
 
     if (!smmtt_has_privs) {
         *prot = 0;
@@ -841,6 +842,13 @@ static int get_physical_address_permission(CPURISCVState* env, int* prot, hwaddr
     int pmp_prot = 0;
     int smmtt_prot = 0;
 
+    if (access_type == MMU_DATA_LOAD)
+        cnt_read++;
+    else if (access_type == MMU_DATA_STORE)
+        cnt_write++;
+    else if (access_type == MMU_INST_FETCH)
+        cnt_fetch++;
+
     pmp_ret = get_physical_address_pmp(env, &pmp_prot, addr,
                                         size, access_type, mode);
     if (pmp_ret != TRANSLATE_SUCCESS) {
@@ -848,8 +856,15 @@ static int get_physical_address_permission(CPURISCVState* env, int* prot, hwaddr
         return pmp_ret;
     }
 
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
     smmtt_ret = get_physical_address_smmtt(env, &smmtt_prot, addr,
                                            size, access_type, mode);
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    lookup_count++;
+    lookup_ns_total += (end.tv_sec - start.tv_sec) * 1000000000ULL + (end.tv_nsec - start.tv_nsec);
 
     *prot = pmp_prot & smmtt_prot;
     if (smmtt_ret != TRANSLATE_SUCCESS) {
@@ -1821,7 +1836,12 @@ void riscv_cpu_do_interrupt(CPUState *cs)
                 // 清零统计
                 mtt_hits = 0;
                 mtt_misses = 0;
-                printf("[QEMU] MTT cache stats reset.\n");
+                lookup_ns_total = 0;
+                lookup_count = 0;
+                cnt_read = 0;
+                cnt_write = 0;
+                cnt_fetch = 0;
+                // printf("[QEMU] MTT cache stats reset.\n");
 
                 env->pc += 4;
                 return;
@@ -1835,10 +1855,14 @@ void riscv_cpu_do_interrupt(CPUState *cs)
                 printf("[QEMU] MTT cache stats:\n");
                 printf("  Hits    : %lu\n", mtt_hits);
                 printf("  Misses  : %lu\n", mtt_misses);
-                printf("  Hit Rate: %.2f%%\n", hit_rate);
+                printf("[QEMU] HitRate: %.2f\n", hit_rate);
 
-                env->gpr[10] = mtt_hits;
+                printf("[QEMU] LookupTime: %lu\n", lookup_ns_total);
+                printf("[QEMU] LookupTimes: %lu\n", lookup_count);
 
+                printf("[QEMU] cnt_read  :%lu\n", cnt_read);
+                printf("[QEMU] cnt_write :%lu\n", cnt_write);
+                printf("[QEMU] cnt_fetch :%lu\n", cnt_fetch);
                 env->pc += 4;
                 return;
             }

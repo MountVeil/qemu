@@ -33,6 +33,8 @@ typedef uint64_t MTTCacheEntry;
 extern MTTCacheEntry mtt_cache[MTT_SET_COUNT][MTT_WAYS];
 extern uint64_t mtt_lru_tick;
 extern uint64_t mtt_hits, mtt_misses;
+extern uint64_t lookup_ns_total, lookup_count;
+extern uint64_t cnt_read, cnt_write, cnt_fetch;
 
 // Encode/Decode helpers
 static inline uint64_t mtt_make_tag(uint64_t pa_page) {

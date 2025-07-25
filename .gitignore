@@ -21,3 +21,4 @@ GTAGS
 *.patch
 *.gcov
 *.bin
+pc-bios/opensbi-riscv64-generic-fw_dynamic.bin

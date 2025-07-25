@@ -8,6 +8,11 @@ uint64_t mtt_lru_tick = 0;
 
 uint64_t mtt_hits = 0;
 uint64_t mtt_misses = 0;
+uint64_t lookup_ns_total = 0;
+uint64_t lookup_count = 0;
+uint64_t cnt_read = 0;
+uint64_t cnt_write = 0;
+uint64_t cnt_fetch = 0;
 
 static inline int mtt_hash_index(uint64_t tag) {
     return (tag >> 12) % MTT_SET_COUNT;  // 更合理的 hash
