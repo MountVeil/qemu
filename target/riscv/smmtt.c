@@ -36,7 +36,7 @@ bool check_mtt_permission(CPURISCVState *env, hwaddr pa,
     else if (required_privs == PAGE_EXEC) mtt_access = ACCESS_FETCH;
 
     // check cache
-    if (mtt_cache_lookup(pa, sdid, mtt_access)) {
+    if (mtt_cache_lookup(pa, sdid, mtt_access, env->priv)) {
         if (allowed_privs) {
             *allowed_privs = 0;
             if (mtt_access == ACCESS_LOAD)  *allowed_privs |= PAGE_READ;

@@ -2,6 +2,7 @@
 #include "mtt_cache.h"
 #include <stdio.h>
 #include <string.h>
+#include "cpu_bits.h"
 
 MTTCacheEntry mtt_cache[MTT_SET_COUNT][MTT_WAYS];
 uint64_t mtt_lru_tick = 0;
@@ -25,7 +26,7 @@ void mtt_cache_init(void) {
     mtt_misses = 0;
 }
 
-bool mtt_cache_lookup(uint64_t pa, uint8_t sdid, int access_type)
+bool mtt_cache_lookup(uint64_t pa, uint8_t sdid, int access_type, int priv)
 {
     uint64_t pa_page = pa & ~0xFFFULL;
     uint64_t tag = mtt_make_tag(pa_page);
@@ -43,15 +44,18 @@ bool mtt_cache_lookup(uint64_t pa, uint8_t sdid, int access_type)
                 mtt_cache[set][i] = (entry & ~(MTT_CACHE_LRU_MASK << MTT_CACHE_LRU_SHIFT)) |
                 (mtt_lru_tick++ << MTT_CACHE_LRU_SHIFT);
 
+                if (priv == PRV_U)
                 mtt_hits++;
                 return true;
             }
 
-            mtt_misses++;
+            if (priv == PRV_U)
+                mtt_misses++;
             return false;
         }
     }
 
+    if (priv == PRV_U)    
     mtt_misses++;
     return false;
 }

@@ -805,10 +805,10 @@ static int get_physical_address_smmtt(CPURISCVState* env, int* prot, hwaddr addr
     }
 
     // if we do not need smmtt cache, we can use smmtt_has_privs directly.
-    smmtt_has_privs = smmtt_hart_has_privs(env, addr, size, 1 << access_type,
-                                            &smmtt_priv, mode);
-    // smmtt_has_privs = check_mtt_permission(env, addr, size, 1 << access_type,
+    // smmtt_has_privs = smmtt_hart_has_privs(env, addr, size, 1 << access_type,
     //                                         &smmtt_priv, mode);
+    smmtt_has_privs = check_mtt_permission(env, addr, size, 1 << access_type,
+                                            &smmtt_priv, mode);
 
     if (!smmtt_has_privs) {
         *prot = 0;
@@ -842,12 +842,16 @@ static int get_physical_address_permission(CPURISCVState* env, int* prot, hwaddr
     int pmp_prot = 0;
     int smmtt_prot = 0;
 
-    if (access_type == MMU_DATA_LOAD)
-        cnt_read++;
-    else if (access_type == MMU_DATA_STORE)
-        cnt_write++;
-    else if (access_type == MMU_INST_FETCH)
-        cnt_fetch++;
+    if (env->priv == PRV_U)
+    {
+        if (access_type == MMU_DATA_LOAD)
+            cnt_read++;
+        else if (access_type == MMU_DATA_STORE)
+            cnt_write++;
+        else if (access_type == MMU_INST_FETCH)
+            cnt_fetch++;
+    }
+
 
     pmp_ret = get_physical_address_pmp(env, &pmp_prot, addr,
                                         size, access_type, mode);

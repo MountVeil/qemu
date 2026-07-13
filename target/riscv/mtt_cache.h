@@ -38,8 +38,21 @@ extern uint64_t cnt_read, cnt_write, cnt_fetch;
 
 // Encode/Decode helpers
 static inline uint64_t mtt_make_tag(uint64_t pa_page) {
-    return (pa_page & ~0xFFFULL);
+    // pa_page = pa & ~0xFFFULL  (已经是页对齐地址)
+    uint64_t ppn = pa_page & ~0xFFFULL;        // 得到物理页号
+
+    // 推荐做法：使用一个简单的、区分度较好的混合 hash
+    // 保留高位 + 一些扰动，适合 36~48 bit 的物理地址
+    uint64_t tag = ppn;
+    tag ^= (tag >> 21);     // 混淆高低位
+    tag ^= (tag >> 12);
+    tag ^= (tag >> 7);
+
+    return tag;
 }
+// static inline uint64_t mtt_make_tag(uint64_t pa_page) {
+//     return (pa_page & ~0xFFFULL);
+// }
 
 static inline uint64_t mtt_extract_tag(MTTCacheEntry e) {
     return (e >> MTT_CACHE_TAG_SHIFT) & MTT_CACHE_TAG_MASK;
@@ -62,7 +75,7 @@ static inline uint64_t mtt_make_entry(uint64_t tag, uint8_t perms, uint64_t lru_
 
 // API
 void mtt_cache_init(void);
-bool mtt_cache_lookup(uint64_t pa, uint8_t sdid, int access_type);
+bool mtt_cache_lookup(uint64_t pa, uint8_t sdid, int access_type, int priv);
 void mtt_cache_insert(uint64_t pa, uint8_t sdid, uint8_t perms);
 void mtt_cache_flush(void);
 void mtt_cache_invalidate(uint64_t pa_page, uint8_t sdid);
