@@ -24,6 +24,19 @@ typedef enum RISCVSMMPTMode {
     RISCV_SMMPT_MODE_64   = 3,
 } RISCVSMMPTMode;
 
+/*
+ * Experimental enforcement policy used to compare:
+ *
+ *   disabled   - No SmMPT enforcement.
+ *   strict     - Complete MPT lookup at every enforcement site.
+ *   provenance - Translation-aware policy; currently aliases strict.
+ */
+typedef enum RISCVSMMPTPolicy {
+    RISCV_SMMPT_POLICY_DISABLED   = 0,
+    RISCV_SMMPT_POLICY_STRICT     = 1,
+    RISCV_SMMPT_POLICY_PROVENANCE = 2,
+} RISCVSMMPTPolicy;
+
 /* Three-bit permission tuple stored in an MPT leaf entry. */
 typedef enum RISCVSMMPTPerm {
     RISCV_SMMPT_PERM_NONE = 0x0,
@@ -42,6 +55,7 @@ typedef enum RISCVSMMPTResult {
     RISCV_SMMPT_INVALID_ENTRY,
     RISCV_SMMPT_UNSUPPORTED,
     RISCV_SMMPT_MEMORY_ERROR,
+    RISCV_SMMPT_SKIPPED_BY_POLICY,
 } RISCVSMMPTResult;
 
 typedef struct RISCVSMMPTConfig {
@@ -114,5 +128,6 @@ void riscv_smmpt_reset_stats(CPURISCVState *env);
 int riscv_smmpt_perm_to_page_prot(RISCVSMMPTPerm perm);
 
 const char *riscv_smmpt_result_name(RISCVSMMPTResult result);
+const char *riscv_smmpt_policy_name(uint8_t policy);
 
 #endif /* TARGET_RISCV_SMMPT_H */

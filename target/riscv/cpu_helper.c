@@ -1079,7 +1079,8 @@ restart:
                               "%s SmMPT PTE fetch address="
                               HWADDR_FMT_plx " prot %d level %d\n",
                               __func__, pte_addr, smmpt_prot, i);
-            } else if (smmpt_ret != RISCV_SMMPT_BARE) {
+            } else if (smmpt_ret != RISCV_SMMPT_BARE &&
+                       smmpt_ret != RISCV_SMMPT_SKIPPED_BY_POLICY) {
                 qemu_log_mask(CPU_LOG_MMU,
                               "%s SmMPT PTE fetch address="
                               HWADDR_FMT_plx " denied: %s level %d\n",
@@ -1280,7 +1281,8 @@ restart:
                           "%s SmMPT PTE A/D update address="
                           HWADDR_FMT_plx " prot %d level %d\n",
                           __func__, pte_addr, smmpt_prot, i);
-        } else if (smmpt_ret != RISCV_SMMPT_BARE) {
+        } else if (smmpt_ret != RISCV_SMMPT_BARE &&
+                   smmpt_ret != RISCV_SMMPT_SKIPPED_BY_POLICY) {
             qemu_log_mask(CPU_LOG_MMU,
                           "%s SmMPT PTE A/D update address="
                           HWADDR_FMT_plx " denied: %s level %d\n",
@@ -1646,7 +1648,8 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                           "%s SmMPT final address=" HWADDR_FMT_plx
                           " prot %d\n",
                           __func__, pa, prot_smmpt);
-        } else if (smmpt_ret != RISCV_SMMPT_BARE) {
+        } else if (smmpt_ret != RISCV_SMMPT_BARE &&
+                   smmpt_ret != RISCV_SMMPT_SKIPPED_BY_POLICY) {
             qemu_log_mask(CPU_LOG_MMU,
                           "%s SmMPT final address=" HWADDR_FMT_plx
                           " denied: %s\n",

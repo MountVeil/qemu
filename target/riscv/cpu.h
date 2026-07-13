@@ -312,6 +312,12 @@ struct CPUArchState {
     target_ulong mmpt;
 
     /*
+     * QEMU-only SmMPT enforcement policy:
+     * disabled, strict, or provenance.
+     */
+    uint8_t smmpt_policy;
+
+    /*
      * SmMPT functional-model statistics.
      *
      * These counters are implementation instrumentation rather than
@@ -330,6 +336,7 @@ struct CPUArchState {
         uint64_t allowed;
         uint64_t denied;
         uint64_t bare_skips;
+        uint64_t policy_skips;
         uint64_t memory_errors;
         uint64_t invalid_results;
     } smmpt_stats;

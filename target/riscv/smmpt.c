@@ -301,6 +301,17 @@ RISCVSMMPTResult riscv_smmpt_check_access(
     MMUAccessType access_type,
     int *page_prot)
 {
+    /*
+     * No-MPT comparison policy. Return before decoding MMPT or reading any
+     * MPT entry, keeping lookup_requests and entry_reads at zero.
+     */
+    if (env->smmpt_policy == RISCV_SMMPT_POLICY_DISABLED) {
+        if (page_prot) {
+            *page_prot = PAGE_READ | PAGE_WRITE | PAGE_EXEC;
+        }
+        return RISCV_SMMPT_SKIPPED_BY_POLICY;
+    }
+
     RISCVSMMPTLookup lookup;
     RISCVSMMPTResult result;
     int prot;
@@ -350,6 +361,9 @@ void riscv_smmpt_record_check(CPURISCVState *env,
         break;
     case RISCV_SMMPT_BARE:
         env->smmpt_stats.bare_skips++;
+        break;
+    case RISCV_SMMPT_SKIPPED_BY_POLICY:
+        env->smmpt_stats.policy_skips++;
         break;
     case RISCV_SMMPT_ACCESS_FAULT:
         env->smmpt_stats.denied++;
@@ -413,7 +427,23 @@ const char *riscv_smmpt_result_name(RISCVSMMPTResult result)
         return "unsupported";
     case RISCV_SMMPT_MEMORY_ERROR:
         return "memory-error";
+    case RISCV_SMMPT_SKIPPED_BY_POLICY:
+        return "policy-disabled";
     default:
         return "unknown";
+    }
+}
+
+const char *riscv_smmpt_policy_name(uint8_t policy)
+{
+    switch (policy) {
+    case RISCV_SMMPT_POLICY_DISABLED:
+        return "disabled";
+    case RISCV_SMMPT_POLICY_STRICT:
+        return "strict";
+    case RISCV_SMMPT_POLICY_PROVENANCE:
+        return "provenance";
+    default:
+        return "invalid";
     }
 }

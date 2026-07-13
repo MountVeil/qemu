@@ -227,6 +227,9 @@ void hmp_info_smmpt(Monitor *mon, const QDict *qdict)
     result = riscv_smmpt_decode_config(env, &config);
 
     monitor_printf(mon, "SmMPT configuration\n");
+    monitor_printf(mon, "  policy:           %s (%u)\n",
+                   riscv_smmpt_policy_name(env->smmpt_policy),
+                   (unsigned int)env->smmpt_policy);
     monitor_printf(mon, "  mmpt:             0x" TARGET_FMT_lx "\n",
                    env->mmpt);
 
@@ -283,6 +286,8 @@ void hmp_info_smmpt(Monitor *mon, const QDict *qdict)
                    env->smmpt_stats.denied);
     monitor_printf(mon, "  bare-skips:        %" PRIu64 "\n",
                    env->smmpt_stats.bare_skips);
+    monitor_printf(mon, "  policy-skips:      %" PRIu64 "\n",
+                   env->smmpt_stats.policy_skips);
     monitor_printf(mon, "  memory-errors:     %" PRIu64 "\n",
                    env->smmpt_stats.memory_errors);
     monitor_printf(mon, "  invalid-results:   %" PRIu64 "\n",

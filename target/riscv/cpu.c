@@ -22,6 +22,7 @@
 #include "qemu/ctype.h"
 #include "qemu/log.h"
 #include "cpu.h"
+#include "smmpt.h"
 #include "cpu_vendorid.h"
 #include "internals.h"
 #include "exec/exec-all.h"
@@ -2684,6 +2685,15 @@ static Property riscv_cpu_properties[] = {
 
 #ifndef CONFIG_USER_ONLY
     DEFINE_PROP_UINT64("resetvec", RISCVCPU, env.resetvec, DEFAULT_RSTVEC),
+
+    /*
+     * Experimental SmMPT comparison policy:
+     *   0 = disabled
+     *   1 = strict
+     *   2 = provenance
+     */
+    DEFINE_PROP_UINT8("smmpt-policy", RISCVCPU, env.smmpt_policy,
+                      RISCV_SMMPT_POLICY_STRICT),
 #endif
 
     DEFINE_PROP_BOOL("short-isa-string", RISCVCPU, cfg.short_isa_string, false),
