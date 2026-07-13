@@ -118,6 +118,25 @@ static bool trans_wfi(DisasContext *ctx, arg_wfi *a)
 #endif
 }
 
+static bool trans_mfence_mcpa(DisasContext *ctx, arg_mfence_mcpa *a)
+{
+#ifndef CONFIG_USER_ONLY
+    /*
+     * MPT mutation and authorization-cache invalidation are restricted to
+     * trusted machine-mode firmware.
+     */
+    if (ctx->priv != PRV_M) {
+        return false;
+    }
+
+    decode_save_opc(ctx, 0);
+    gen_helper_smmpt_mfence_mcpa(tcg_env);
+    return true;
+#else
+    return false;
+#endif
+}
+
 static bool trans_sfence_vma(DisasContext *ctx, arg_sfence_vma *a)
 {
 #ifndef CONFIG_USER_ONLY

@@ -363,6 +363,8 @@ struct CPUArchState {
         uint64_t ptac_misses;
         uint64_t ptac_fills;
         uint64_t ptac_invalidations;
+        uint64_t mmpt_change_invalidations;
+        uint64_t mfence_mcpa_invalidations;
 
         uint64_t pte_fetch_full_lookups;
         uint64_t pte_fetch_reuses;

@@ -306,6 +306,10 @@ void hmp_info_smmpt(Monitor *mon, const QDict *qdict)
                    env->smmpt_stats.ptac_fills);
     monitor_printf(mon, "  invalidations:     %" PRIu64 "\n",
                    env->smmpt_stats.ptac_invalidations);
+    monitor_printf(mon, "  mmpt-invalidations:%" PRIu64 "\n",
+                   env->smmpt_stats.mmpt_change_invalidations);
+    monitor_printf(mon, "  mfence-invalidates:%" PRIu64 "\n",
+                   env->smmpt_stats.mfence_mcpa_invalidations);
     monitor_printf(mon, "  pte-full-lookups:  %" PRIu64 "\n",
                    env->smmpt_stats.pte_fetch_full_lookups);
     monitor_printf(mon, "  pte-reuses:        %" PRIu64 "\n",

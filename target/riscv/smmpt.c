@@ -16,7 +16,9 @@
 #include "cpu.h"
 #include "smmpt.h"
 #include "exec/memory.h"
+#include "exec/exec-all.h"
 #include "exec/page-protection.h"
+#include "exec/helper-proto.h"
 
 /*
  * Current prototype MPTE layout:
@@ -486,6 +488,13 @@ void riscv_smmpt_invalidate_ptac(CPURISCVState *env)
     }
 
     env->smmpt_stats.ptac_invalidations++;
+}
+
+void HELPER(smmpt_mfence_mcpa)(CPURISCVState *env)
+{
+    riscv_smmpt_invalidate_ptac(env);
+    env->smmpt_stats.mfence_mcpa_invalidations++;
+    tlb_flush(env_cpu(env));
 }
 
 int riscv_smmpt_perm_to_page_prot(RISCVSMMPTPerm perm)

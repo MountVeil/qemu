@@ -5014,6 +5014,7 @@ static RISCVException write_mmpt(CPURISCVState *env, int csrno,
     if (env->mmpt != val) {
         env->mmpt = val;
         riscv_smmpt_invalidate_ptac(env);
+        env->smmpt_stats.mmpt_change_invalidations++;
 
         /*
          * A new MPT root, mode, or SDID changes the effective physical
