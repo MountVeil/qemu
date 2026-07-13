@@ -305,6 +305,12 @@ struct CPUArchState {
     target_ulong mcause;
     target_ulong mtval;  /* since: priv-1.10.0 */
 
+    /*
+     * Experimental SmMPT configuration:
+     * mode, current security-domain identifier, and MPT root PPN.
+     */
+    target_ulong mmpt;
+
     /* Machine and Supervisor interrupt priorities */
     uint8_t miprio[64];
     uint8_t siprio[64];

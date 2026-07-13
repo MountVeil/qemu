@@ -353,6 +353,27 @@
 #define CSR_PMPADDR14       0x3be
 #define CSR_PMPADDR15       0x3bf
 
+/*
+ * Experimental SmMPT machine CSR.
+ *
+ * CSR 0x3f0 is used by the matching OpenSBI SmMPT prototype.  The
+ * encoding remains experimental and must be kept synchronized with
+ * OpenSBI.
+ */
+#define CSR_MMPT            0x3f0
+
+#define MMPT32_MODE_SHIFT   30
+#define MMPT32_MODE_MASK    (0x3UL << MMPT32_MODE_SHIFT)
+#define MMPT32_SDID_SHIFT   24
+#define MMPT32_SDID_MASK    (0x3fUL << MMPT32_SDID_SHIFT)
+#define MMPT32_PPN_MASK     0x003fffffUL
+
+#define MMPT64_MODE_SHIFT   60
+#define MMPT64_MODE_MASK    (0xfULL << MMPT64_MODE_SHIFT)
+#define MMPT64_SDID_SHIFT   54
+#define MMPT64_SDID_MASK    (0x3fULL << MMPT64_SDID_SHIFT)
+#define MMPT64_PPN_MASK     0x00000fffffffffffULL
+
 /* Debug/Trace Registers (shared with Debug Mode) */
 #define CSR_TSELECT         0x7a0
 #define CSR_TDATA1          0x7a1

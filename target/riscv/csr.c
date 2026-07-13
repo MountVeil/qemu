@@ -4983,6 +4983,48 @@ static RISCVException write_jvt(CPURISCVState *env, int csrno,
  * Control and Status Register function table
  * riscv_csr_operations::predicate() must be provided for an implemented CSR
  */
+/* Experimental SmMPT MMPT CSR accessors */
+static RISCVException read_mmpt(CPURISCVState *env, int csrno,
+                                target_ulong *val)
+{
+    *val = env->mmpt;
+    return RISCV_EXCP_NONE;
+}
+
+static RISCVException write_mmpt(CPURISCVState *env, int csrno,
+                                 target_ulong val)
+{
+    target_ulong writable_mask;
+
+    if (riscv_cpu_mxl(env) == MXL_RV32) {
+        writable_mask = (target_ulong)(
+            MMPT32_MODE_MASK |
+            MMPT32_SDID_MASK |
+            MMPT32_PPN_MASK);
+    } else {
+        writable_mask = (target_ulong)(
+            MMPT64_MODE_MASK |
+            MMPT64_SDID_MASK |
+            MMPT64_PPN_MASK);
+    }
+
+    val &= writable_mask;
+
+    if (env->mmpt != val) {
+        env->mmpt = val;
+
+        /*
+         * A new MPT root, mode, or SDID changes the effective physical
+         * permissions associated with translated addresses.  A full TLB
+         * flush is conservative but correct for the initial functional
+         * model.  A dedicated SmMPT fence will replace this later.
+         */
+        tlb_flush(env_cpu(env));
+    }
+
+    return RISCV_EXCP_NONE;
+}
+
 riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
     /* User Floating-Point CSRs */
     [CSR_FFLAGS]   = { "fflags",   fs,     read_fflags,  write_fflags },
@@ -5283,6 +5325,9 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
                           write_hviprio2h                                   },
     [CSR_VSIEH]       = { "vsieh",       aia_hmode32, NULL, NULL, rmw_vsieh },
     [CSR_VSIPH]       = { "vsiph",       aia_hmode32, NULL, NULL, rmw_vsiph },
+
+    /* Experimental SmMPT configuration */
+    [CSR_MMPT]       = { "mmpt",       any,    read_mmpt, write_mmpt },
 
     /* Physical Memory Protection */
     [CSR_MSECCFG]    = { "mseccfg",   have_mseccfg, read_mseccfg, write_mseccfg,
