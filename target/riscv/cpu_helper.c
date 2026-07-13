@@ -1251,8 +1251,39 @@ restart:
 
     /* Page table updates need to be atomic with MTTCG enabled */
     if (updated_pte != pte && !is_debug) {
+        RISCVSMMPTResult smmpt_ret;
+        int smmpt_prot;
+
         if (!adue) {
             return TRANSLATE_FAIL;
+        }
+
+        /*
+         * Strict SmMPT baseline: the page walker performs an internal
+         * physical write when setting PTE A/D bits.  This write must be
+         * authorized independently from the preceding PTE read.
+         *
+         * A later translation-aware design may authorize this operation
+         * using validated page-table provenance.  The baseline intentionally
+         * performs a complete MPT lookup.
+         */
+        smmpt_ret = riscv_smmpt_check_access(env, pte_addr,
+                                             MMU_DATA_STORE,
+                                             &smmpt_prot);
+
+        if (smmpt_ret == RISCV_SMMPT_OK) {
+            qemu_log_mask(CPU_LOG_MMU,
+                          "%s SmMPT PTE A/D update address="
+                          HWADDR_FMT_plx " prot %d level %d\n",
+                          __func__, pte_addr, smmpt_prot, i);
+        } else if (smmpt_ret != RISCV_SMMPT_BARE) {
+            qemu_log_mask(CPU_LOG_MMU,
+                          "%s SmMPT PTE A/D update address="
+                          HWADDR_FMT_plx " denied: %s level %d\n",
+                          __func__, pte_addr,
+                          riscv_smmpt_result_name(smmpt_ret), i);
+
+            return TRANSLATE_PMP_FAIL;
         }
 
         /*
