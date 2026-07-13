@@ -321,6 +321,25 @@ void hmp_info_smmpt(Monitor *mon, const QDict *qdict)
     monitor_printf(mon, "  entries/lookup:    %.4f\n", entries_per_lookup);
 }
 
+void hmp_smmpt_reset_stats(Monitor *mon, const QDict *qdict)
+{
+    CPUArchState *env;
+
+    env = mon_get_cpu_env(mon);
+    if (!env) {
+        monitor_printf(mon, "No CPU available\n");
+        return;
+    }
+
+    /*
+     * Reset instrumentation only. Do not modify MMPT, SDID, MPT contents,
+     * PTAC entries, PTAC generation, TLB contents, or architectural state.
+     */
+    riscv_smmpt_reset_stats(env);
+
+    monitor_printf(mon, "SmMPT statistics reset for selected CPU\n");
+}
+
 void hmp_info_mem(Monitor *mon, const QDict *qdict)
 {
     CPUArchState *env;

@@ -20,6 +20,23 @@ SRST
   Show the help for all commands or just for command *cmd*.
 ERST
 
+#if defined(TARGET_RISCV)
+    {
+        .name       = "smmpt-reset-stats",
+        .args_type  = "",
+        .params     = "",
+        .help       = "reset RISC-V SmMPT statistics for the selected CPU",
+        .cmd        = hmp_smmpt_reset_stats,
+    },
+#endif
+
+SRST
+``smmpt-reset-stats``
+  Reset SmMPT instrumentation counters for the currently selected RISC-V CPU.
+  This command does not modify MMPT, MPT contents, PTAC state, TLB state, or
+  architectural state.
+ERST
+
     {
         .name       = "commit",
         .args_type  = "device:B",
