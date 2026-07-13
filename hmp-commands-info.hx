@@ -18,6 +18,20 @@ SRST
 ERST
 
     {
+        .name       = "smmpt",
+        .args_type  = "",
+        .params     = "",
+        .help       = "show RISC-V SmMPT configuration and statistics",
+        .cmd        = hmp_info_smmpt,
+    },
+
+SRST
+  ``info smmpt``
+    Show the current RISC-V SmMPT configuration, enforcement counters,
+    and translation-to-protection amplification ratios.
+ERST
+
+    {
         .name       = "version",
         .args_type  = "",
         .params     = "",

@@ -23,6 +23,7 @@
 #include "cpu_bits.h"
 #include "monitor/monitor.h"
 #include "monitor/hmp-target.h"
+#include "smmpt.h"
 
 #ifdef TARGET_RISCV64
 #define PTE_HEADER_FIELDS       "vaddr            paddr            "\
@@ -205,6 +206,92 @@ static void mem_info_svxx(Monitor *mon, CPUArchState *env)
     /* don't forget the last one */
     print_pte(mon, va_bits, vbase, pbase,
               last_paddr + last_size - pbase, last_attr);
+}
+
+
+void hmp_info_smmpt(Monitor *mon, const QDict *qdict)
+{
+    CPUArchState *env;
+    RISCVSMMPTConfig config;
+    RISCVSMMPTResult result;
+    double lookups_per_tlb;
+    double entries_per_tlb;
+    double entries_per_lookup;
+
+    env = mon_get_cpu_env(mon);
+    if (!env) {
+        monitor_printf(mon, "No CPU available\n");
+        return;
+    }
+
+    result = riscv_smmpt_decode_config(env, &config);
+
+    monitor_printf(mon, "SmMPT configuration\n");
+    monitor_printf(mon, "  mmpt:             0x" TARGET_FMT_lx "\n",
+                   env->mmpt);
+
+    if (result == RISCV_SMMPT_BARE) {
+        monitor_printf(mon, "  mode:             BARE\n");
+        monitor_printf(mon, "  enabled:          no\n");
+        monitor_printf(mon, "  sdid:             %u\n", config.sdid);
+        monitor_printf(mon, "  root-pa:          " HWADDR_FMT_plx "\n",
+                       config.root_pa);
+    } else if (result == RISCV_SMMPT_OK) {
+        monitor_printf(mon, "  mode:             %u\n",
+                       (unsigned int)config.mode);
+        monitor_printf(mon, "  enabled:          yes\n");
+        monitor_printf(mon, "  sdid:             %u\n", config.sdid);
+        monitor_printf(mon, "  root-pa:          " HWADDR_FMT_plx "\n",
+                       config.root_pa);
+    } else {
+        monitor_printf(mon, "  decode-result:    %s\n",
+                       riscv_smmpt_result_name(result));
+    }
+
+    lookups_per_tlb = env->smmpt_stats.tlb_fills ?
+        (double)env->smmpt_stats.lookup_requests /
+        (double)env->smmpt_stats.tlb_fills : 0.0;
+
+    entries_per_tlb = env->smmpt_stats.tlb_fills ?
+        (double)env->smmpt_stats.entry_reads /
+        (double)env->smmpt_stats.tlb_fills : 0.0;
+
+    entries_per_lookup = env->smmpt_stats.lookup_requests ?
+        (double)env->smmpt_stats.entry_reads /
+        (double)env->smmpt_stats.lookup_requests : 0.0;
+
+    monitor_printf(mon, "\nSmMPT statistics\n");
+    monitor_printf(mon, "  tlb-fills:         %" PRIu64 "\n",
+                   env->smmpt_stats.tlb_fills);
+    monitor_printf(mon, "  lookup-requests:   %" PRIu64 "\n",
+                   env->smmpt_stats.lookup_requests);
+    monitor_printf(mon, "  entry-reads:       %" PRIu64 "\n",
+                   env->smmpt_stats.entry_reads);
+
+    monitor_printf(mon, "\nCheck sites\n");
+    monitor_printf(mon, "  final-checks:      %" PRIu64 "\n",
+                   env->smmpt_stats.final_checks);
+    monitor_printf(mon, "  pte-fetch-checks:  %" PRIu64 "\n",
+                   env->smmpt_stats.pte_fetch_checks);
+    monitor_printf(mon, "  ad-update-checks:  %" PRIu64 "\n",
+                   env->smmpt_stats.ad_update_checks);
+
+    monitor_printf(mon, "\nResults\n");
+    monitor_printf(mon, "  allowed:           %" PRIu64 "\n",
+                   env->smmpt_stats.allowed);
+    monitor_printf(mon, "  denied:            %" PRIu64 "\n",
+                   env->smmpt_stats.denied);
+    monitor_printf(mon, "  bare-skips:        %" PRIu64 "\n",
+                   env->smmpt_stats.bare_skips);
+    monitor_printf(mon, "  memory-errors:     %" PRIu64 "\n",
+                   env->smmpt_stats.memory_errors);
+    monitor_printf(mon, "  invalid-results:   %" PRIu64 "\n",
+                   env->smmpt_stats.invalid_results);
+
+    monitor_printf(mon, "\nAmplification\n");
+    monitor_printf(mon, "  lookups/tlb-fill:  %.4f\n", lookups_per_tlb);
+    monitor_printf(mon, "  entries/tlb-fill:  %.4f\n", entries_per_tlb);
+    monitor_printf(mon, "  entries/lookup:    %.4f\n", entries_per_lookup);
 }
 
 void hmp_info_mem(Monitor *mon, const QDict *qdict)
