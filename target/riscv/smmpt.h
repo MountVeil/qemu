@@ -78,6 +78,19 @@ RISCVSMMPTResult riscv_smmpt_lookup(
     hwaddr pa,
     RISCVSMMPTLookup *lookup);
 
+/*
+ * Check the final translated physical address against SmMPT.
+ *
+ * RISCV_SMMPT_BARE means that SmMPT is disabled and callers must preserve
+ * ordinary QEMU behaviour.  RISCV_SMMPT_OK returns the MPT-derived PAGE_*
+ * mask in page_prot.
+ */
+RISCVSMMPTResult riscv_smmpt_check_access(
+    CPURISCVState *env,
+    hwaddr pa,
+    MMUAccessType access_type,
+    int *page_prot);
+
 /* Convert a three-bit SmMPT permission tuple to QEMU PAGE_* protection bits. */
 int riscv_smmpt_perm_to_page_prot(RISCVSMMPTPerm perm);
 

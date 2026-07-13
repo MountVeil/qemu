@@ -285,6 +285,37 @@ RISCVSMMPTResult riscv_smmpt_lookup(CPURISCVState *env,
     return RISCV_SMMPT_INVALID_ENTRY;
 }
 
+RISCVSMMPTResult riscv_smmpt_check_access(
+    CPURISCVState *env,
+    hwaddr pa,
+    MMUAccessType access_type,
+    int *page_prot)
+{
+    RISCVSMMPTLookup lookup;
+    RISCVSMMPTResult result;
+    int prot;
+
+    if (!page_prot) {
+        return RISCV_SMMPT_INVALID_ENTRY;
+    }
+
+    *page_prot = 0;
+
+    result = riscv_smmpt_lookup(env, pa, &lookup);
+    if (result != RISCV_SMMPT_OK) {
+        return result;
+    }
+
+    prot = riscv_smmpt_perm_to_page_prot(lookup.perm);
+    *page_prot = prot;
+
+    if (!((prot >> access_type) & 1)) {
+        return RISCV_SMMPT_ACCESS_FAULT;
+    }
+
+    return RISCV_SMMPT_OK;
+}
+
 int riscv_smmpt_perm_to_page_prot(RISCVSMMPTPerm perm)
 {
     int prot = 0;

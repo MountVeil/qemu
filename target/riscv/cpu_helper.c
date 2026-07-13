@@ -34,6 +34,7 @@
 #include "debug.h"
 #include "tcg/oversized-guest.h"
 #include "pmp.h"
+#include "smmpt.h"
 
 int riscv_env_mmu_index(CPURISCVState *env, bool ifetch)
 {
@@ -1536,6 +1537,51 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                           __func__, pa, ret, prot_pmp, tlb_size);
 
             prot &= prot_pmp;
+        }
+    }
+
+    /*
+     * Apply SmMPT only after all address-translation stages have produced the
+     * final system physical address.  Intermediate page-table accesses are
+     * handled separately by the later translation-authorization path.
+     *
+     * M-mode remains outside SmMPT enforcement so trusted firmware can create,
+     * update, and revoke MPT mappings without recursively requiring permission
+     * from the table it is managing.
+     */
+    if (ret == TRANSLATE_SUCCESS && mode != PRV_M) {
+        RISCVSMMPTResult smmpt_ret;
+        int prot_smmpt;
+
+        smmpt_ret = riscv_smmpt_check_access(env, pa, access_type,
+                                             &prot_smmpt);
+
+        if (smmpt_ret == RISCV_SMMPT_OK) {
+            prot &= prot_smmpt;
+
+            /*
+             * The baseline leaf format may assign distinct permissions to
+             * adjacent 4 KiB pages.  Do not install a larger TLB entry even
+             * when PMP permits a larger range.
+             */
+            tlb_size = MIN(tlb_size, (hwaddr)TARGET_PAGE_SIZE);
+
+            qemu_log_mask(CPU_LOG_MMU,
+                          "%s SmMPT final address=" HWADDR_FMT_plx
+                          " prot %d\n",
+                          __func__, pa, prot_smmpt);
+        } else if (smmpt_ret != RISCV_SMMPT_BARE) {
+            qemu_log_mask(CPU_LOG_MMU,
+                          "%s SmMPT final address=" HWADDR_FMT_plx
+                          " denied: %s\n",
+                          __func__, pa,
+                          riscv_smmpt_result_name(smmpt_ret));
+
+            /*
+             * SmMPT is a physical protection mechanism, so report failures as
+             * access faults rather than page faults.
+             */
+            ret = TRANSLATE_PMP_FAIL;
         }
     }
 
