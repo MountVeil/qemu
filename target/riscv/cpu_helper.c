@@ -1055,6 +1055,44 @@ restart:
             return TRANSLATE_PMP_FAIL;
         }
 
+        /*
+         * Strict SmMPT baseline: every physical PTE fetch performs a complete
+         * MPT lookup.  This deliberately models the unoptimized recursive
+         * protection path against which translation-aware authorization will
+         * later be evaluated.
+         *
+         * The check is performed after any required G-stage translation, so
+         * pte_addr is the system physical address that will actually be read.
+         */
+        {
+            RISCVSMMPTResult smmpt_ret;
+            int smmpt_prot;
+
+            smmpt_ret = riscv_smmpt_check_access(env, pte_addr,
+                                                 MMU_DATA_LOAD,
+                                                 &smmpt_prot);
+
+            if (smmpt_ret == RISCV_SMMPT_OK) {
+                qemu_log_mask(CPU_LOG_MMU,
+                              "%s SmMPT PTE fetch address="
+                              HWADDR_FMT_plx " prot %d level %d\n",
+                              __func__, pte_addr, smmpt_prot, i);
+            } else if (smmpt_ret != RISCV_SMMPT_BARE) {
+                qemu_log_mask(CPU_LOG_MMU,
+                              "%s SmMPT PTE fetch address="
+                              HWADDR_FMT_plx " denied: %s level %d\n",
+                              __func__, pte_addr,
+                              riscv_smmpt_result_name(smmpt_ret), i);
+
+                /*
+                 * SmMPT is a physical-access protection mechanism.  A denied
+                 * internal PTE read therefore becomes an access fault rather
+                 * than a page fault.
+                 */
+                return TRANSLATE_PMP_FAIL;
+            }
+        }
+
         if (riscv_cpu_mxl(env) == MXL_RV32) {
             pte = address_space_ldl(cs->as, pte_addr, attrs, &res);
         } else {
