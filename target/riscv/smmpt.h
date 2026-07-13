@@ -1,0 +1,86 @@
+/*
+ * Experimental RISC-V SmMPT functional model.
+ *
+ * This header describes the baseline MPT lookup interface only.  It does not
+ * implement an MPT cache, page-walk bypass, or translation authorization.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
+
+#ifndef TARGET_RISCV_SMMPT_H
+#define TARGET_RISCV_SMMPT_H
+
+#include "cpu.h"
+
+/*
+ * MMPT mode values shared with the current OpenSBI prototype.
+ *
+ * RV32 supports BARE and 3:4.  RV64 supports BARE, 4:3, 5:2, and 6:4.
+ */
+typedef enum RISCVSMMPTMode {
+    RISCV_SMMPT_MODE_BARE = 0,
+    RISCV_SMMPT_MODE_43   = 1,
+    RISCV_SMMPT_MODE_52   = 2,
+    RISCV_SMMPT_MODE_64   = 3,
+} RISCVSMMPTMode;
+
+/* Three-bit permission tuple stored in an MPT leaf entry. */
+typedef enum RISCVSMMPTPerm {
+    RISCV_SMMPT_PERM_NONE = 0x0,
+    RISCV_SMMPT_PERM_R    = 0x1,
+    RISCV_SMMPT_PERM_RW   = 0x3,
+    RISCV_SMMPT_PERM_X    = 0x4,
+    RISCV_SMMPT_PERM_RX   = 0x5,
+    RISCV_SMMPT_PERM_RWX  = 0x7,
+} RISCVSMMPTPerm;
+
+typedef enum RISCVSMMPTResult {
+    RISCV_SMMPT_OK = 0,
+    RISCV_SMMPT_BARE,
+    RISCV_SMMPT_ACCESS_FAULT,
+    RISCV_SMMPT_INVALID_MODE,
+    RISCV_SMMPT_INVALID_ENTRY,
+    RISCV_SMMPT_UNSUPPORTED,
+    RISCV_SMMPT_MEMORY_ERROR,
+} RISCVSMMPTResult;
+
+typedef struct RISCVSMMPTConfig {
+    RISCVSMMPTMode mode;
+    uint32_t sdid;
+    hwaddr root_pa;
+    bool enabled;
+} RISCVSMMPTConfig;
+
+typedef struct RISCVSMMPTLookup {
+    RISCVSMMPTPerm perm;
+    hwaddr entry_pa;
+    int level;
+    unsigned int subregion;
+} RISCVSMMPTLookup;
+
+/*
+ * Decode env->mmpt into a functional configuration.
+ *
+ * This routine performs encoding validation but does not access guest memory.
+ */
+RISCVSMMPTResult riscv_smmpt_decode_config(
+    CPURISCVState *env,
+    RISCVSMMPTConfig *config);
+
+/*
+ * Walk the MPT for a physical address.
+ *
+ * On success, lookup->perm contains the leaf permission tuple.  This function
+ * performs no caching and does not alter CPU or guest state.
+ */
+RISCVSMMPTResult riscv_smmpt_lookup(
+    CPURISCVState *env,
+    hwaddr pa,
+    RISCVSMMPTLookup *lookup);
+
+/* Convert a three-bit SmMPT permission tuple to QEMU PAGE_* protection bits. */
+int riscv_smmpt_perm_to_page_prot(RISCVSMMPTPerm perm);
+
+const char *riscv_smmpt_result_name(RISCVSMMPTResult result);
+
+#endif /* TARGET_RISCV_SMMPT_H */
