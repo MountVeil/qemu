@@ -279,7 +279,12 @@ RISCVSMMPTResult riscv_smmpt_lookup(CPURISCVState *env,
             return RISCV_SMMPT_INVALID_ENTRY;
         }
 
-        child_ppn = info & SMMPT_CHILD_PPN_MASK;
+        /*
+         * OpenSBI stores a non-leaf child PPN in MPTE.info[55:2].
+         * MPTE.info itself starts at raw entry bit 8, so the child PPN
+         * occupies raw entry bits [61:10].
+         */
+        child_ppn = (info >> 2) & SMMPT_CHILD_PPN_MASK;
         if (child_ppn == 0) {
             return RISCV_SMMPT_INVALID_ENTRY;
         }
