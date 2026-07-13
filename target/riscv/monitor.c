@@ -293,6 +293,24 @@ void hmp_info_smmpt(Monitor *mon, const QDict *qdict)
     monitor_printf(mon, "  invalid-results:   %" PRIu64 "\n",
                    env->smmpt_stats.invalid_results);
 
+    monitor_printf(mon, "\nPTAC\n");
+    monitor_printf(mon, "  generation:        %" PRIu64 "\n",
+                   env->smmpt_ptac_generation);
+    monitor_printf(mon, "  lookups:           %" PRIu64 "\n",
+                   env->smmpt_stats.ptac_lookups);
+    monitor_printf(mon, "  hits:              %" PRIu64 "\n",
+                   env->smmpt_stats.ptac_hits);
+    monitor_printf(mon, "  misses:            %" PRIu64 "\n",
+                   env->smmpt_stats.ptac_misses);
+    monitor_printf(mon, "  fills:             %" PRIu64 "\n",
+                   env->smmpt_stats.ptac_fills);
+    monitor_printf(mon, "  invalidations:     %" PRIu64 "\n",
+                   env->smmpt_stats.ptac_invalidations);
+    monitor_printf(mon, "  pte-full-lookups:  %" PRIu64 "\n",
+                   env->smmpt_stats.pte_fetch_full_lookups);
+    monitor_printf(mon, "  pte-reuses:        %" PRIu64 "\n",
+                   env->smmpt_stats.pte_fetch_reuses);
+
     monitor_printf(mon, "\nAmplification\n");
     monitor_printf(mon, "  lookups/tlb-fill:  %.4f\n", lookups_per_tlb);
     monitor_printf(mon, "  entries/tlb-fill:  %.4f\n", entries_per_tlb);

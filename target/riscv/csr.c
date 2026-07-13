@@ -21,6 +21,7 @@
 #include "qemu/log.h"
 #include "qemu/timer.h"
 #include "cpu.h"
+#include "smmpt.h"
 #include "tcg/tcg-cpu.h"
 #include "pmu.h"
 #include "time_helper.h"
@@ -5012,6 +5013,7 @@ static RISCVException write_mmpt(CPURISCVState *env, int csrno,
 
     if (env->mmpt != val) {
         env->mmpt = val;
+        riscv_smmpt_invalidate_ptac(env);
 
         /*
          * A new MPT root, mode, or SDID changes the effective physical

@@ -317,6 +317,24 @@ struct CPUArchState {
      */
     uint8_t smmpt_policy;
 
+#define RISCV_SMMPT_PTAC_ENTRIES 16
+    /*
+     * Page-Table Authorization Cache.
+     *
+     * Entries are indexed by the physical 4 KiB page containing a PTE.
+     * Only hardware page-table fetches may consume or fill this cache.
+     */
+    struct {
+        bool valid;
+        hwaddr page_pa;
+        uint32_t sdid;
+        hwaddr root_pa;
+        uint64_t generation;
+        int page_prot;
+    } smmpt_ptac[RISCV_SMMPT_PTAC_ENTRIES];
+
+    uint64_t smmpt_ptac_generation;
+
     /*
      * SmMPT functional-model statistics.
      *
@@ -339,6 +357,15 @@ struct CPUArchState {
         uint64_t policy_skips;
         uint64_t memory_errors;
         uint64_t invalid_results;
+
+        uint64_t ptac_lookups;
+        uint64_t ptac_hits;
+        uint64_t ptac_misses;
+        uint64_t ptac_fills;
+        uint64_t ptac_invalidations;
+
+        uint64_t pte_fetch_full_lookups;
+        uint64_t pte_fetch_reuses;
     } smmpt_stats;
 
     /* Machine and Supervisor interrupt priorities */

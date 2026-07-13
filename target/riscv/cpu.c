@@ -1026,6 +1026,9 @@ static void riscv_cpu_reset_hold(Object *obj, ResetType type)
     env->vill = true;
 
 #ifndef CONFIG_USER_ONLY
+    riscv_smmpt_reset_stats(env);
+    riscv_smmpt_reset_ptac(env);
+
     if (cpu->cfg.debug) {
         riscv_trigger_reset_hold(env);
     }

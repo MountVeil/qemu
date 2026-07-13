@@ -1068,9 +1068,8 @@ restart:
             RISCVSMMPTResult smmpt_ret;
             int smmpt_prot;
 
-            smmpt_ret = riscv_smmpt_check_access(env, pte_addr,
-                                                 MMU_DATA_LOAD,
-                                                 &smmpt_prot);
+            smmpt_ret = riscv_smmpt_check_pte_fetch(env, pte_addr,
+                                                    &smmpt_prot);
             riscv_smmpt_record_check(env, RISCV_SMMPT_CHECK_PTE_FETCH,
                                      smmpt_ret);
 

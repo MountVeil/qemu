@@ -337,6 +337,83 @@ RISCVSMMPTResult riscv_smmpt_check_access(
     return RISCV_SMMPT_OK;
 }
 
+static unsigned int smmpt_ptac_index(hwaddr page_pa)
+{
+    return (page_pa >> TARGET_PAGE_BITS) &
+           (RISCV_SMMPT_PTAC_ENTRIES - 1);
+}
+
+RISCVSMMPTResult riscv_smmpt_check_pte_fetch(
+    CPURISCVState *env,
+    hwaddr pte_pa,
+    int *page_prot)
+{
+    RISCVSMMPTConfig config;
+    RISCVSMMPTResult result;
+    hwaddr page_pa;
+    unsigned int index;
+
+    if (env->smmpt_policy != RISCV_SMMPT_POLICY_PROVENANCE) {
+        if (env->smmpt_policy == RISCV_SMMPT_POLICY_STRICT) {
+            env->smmpt_stats.pte_fetch_full_lookups++;
+        }
+
+        return riscv_smmpt_check_access(env, pte_pa, MMU_DATA_LOAD,
+                                        page_prot);
+    }
+
+    /*
+     * Decode the current MMPT identity before consulting PTAC. This does not
+     * perform an MPT memory access or increment lookup_requests.
+     */
+    result = riscv_smmpt_decode_config(env, &config);
+    if (result != RISCV_SMMPT_OK) {
+        return result;
+    }
+
+    page_pa = pte_pa & TARGET_PAGE_MASK;
+    index = smmpt_ptac_index(page_pa);
+
+    env->smmpt_stats.ptac_lookups++;
+
+    if (env->smmpt_ptac[index].valid &&
+        env->smmpt_ptac[index].page_pa == page_pa &&
+        env->smmpt_ptac[index].sdid == config.sdid &&
+        env->smmpt_ptac[index].root_pa == config.root_pa &&
+        env->smmpt_ptac[index].generation ==
+            env->smmpt_ptac_generation &&
+        (env->smmpt_ptac[index].page_prot & PAGE_READ)) {
+        env->smmpt_stats.ptac_hits++;
+        env->smmpt_stats.pte_fetch_reuses++;
+
+        if (page_prot) {
+            *page_prot = env->smmpt_ptac[index].page_prot;
+        }
+
+        return RISCV_SMMPT_OK;
+    }
+
+    env->smmpt_stats.ptac_misses++;
+    env->smmpt_stats.pte_fetch_full_lookups++;
+
+    result = riscv_smmpt_check_access(env, pte_pa, MMU_DATA_LOAD,
+                                      page_prot);
+    if (result != RISCV_SMMPT_OK) {
+        return result;
+    }
+
+    env->smmpt_ptac[index].valid = true;
+    env->smmpt_ptac[index].page_pa = page_pa;
+    env->smmpt_ptac[index].sdid = config.sdid;
+    env->smmpt_ptac[index].root_pa = config.root_pa;
+    env->smmpt_ptac[index].generation = env->smmpt_ptac_generation;
+    env->smmpt_ptac[index].page_prot = *page_prot;
+
+    env->smmpt_stats.ptac_fills++;
+
+    return RISCV_SMMPT_OK;
+}
+
 void riscv_smmpt_record_check(CPURISCVState *env,
                               RISCVSMMPTCheckKind kind,
                               RISCVSMMPTResult result)
@@ -391,6 +468,24 @@ void riscv_smmpt_record_check(CPURISCVState *env,
 void riscv_smmpt_reset_stats(CPURISCVState *env)
 {
     memset(&env->smmpt_stats, 0, sizeof(env->smmpt_stats));
+}
+
+void riscv_smmpt_reset_ptac(CPURISCVState *env)
+{
+    memset(env->smmpt_ptac, 0, sizeof(env->smmpt_ptac));
+    env->smmpt_ptac_generation = 1;
+}
+
+void riscv_smmpt_invalidate_ptac(CPURISCVState *env)
+{
+    memset(env->smmpt_ptac, 0, sizeof(env->smmpt_ptac));
+
+    env->smmpt_ptac_generation++;
+    if (env->smmpt_ptac_generation == 0) {
+        env->smmpt_ptac_generation = 1;
+    }
+
+    env->smmpt_stats.ptac_invalidations++;
 }
 
 int riscv_smmpt_perm_to_page_prot(RISCVSMMPTPerm perm)

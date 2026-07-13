@@ -112,6 +112,17 @@ RISCVSMMPTResult riscv_smmpt_check_access(
     int *page_prot);
 
 /*
+ * Check a physical PTE fetch.
+ *
+ * Strict mode performs a complete MPT lookup. Provenance mode may reuse a
+ * matching PTAC authorization. Disabled mode skips SmMPT enforcement.
+ */
+RISCVSMMPTResult riscv_smmpt_check_pte_fetch(
+    CPURISCVState *env,
+    hwaddr pte_pa,
+    int *page_prot);
+
+/*
  * Record the result of one enforcement-site SmMPT check.
  *
  * MPT table-walk and entry-read counts are collected internally by the
@@ -123,6 +134,8 @@ void riscv_smmpt_record_check(
     RISCVSMMPTResult result);
 
 void riscv_smmpt_reset_stats(CPURISCVState *env);
+void riscv_smmpt_reset_ptac(CPURISCVState *env);
+void riscv_smmpt_invalidate_ptac(CPURISCVState *env);
 
 /* Convert a three-bit SmMPT permission tuple to QEMU PAGE_* protection bits. */
 int riscv_smmpt_perm_to_page_prot(RISCVSMMPTPerm perm);
