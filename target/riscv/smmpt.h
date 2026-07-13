@@ -58,6 +58,12 @@ typedef struct RISCVSMMPTLookup {
     unsigned int subregion;
 } RISCVSMMPTLookup;
 
+typedef enum RISCVSMMPTCheckKind {
+    RISCV_SMMPT_CHECK_FINAL,
+    RISCV_SMMPT_CHECK_PTE_FETCH,
+    RISCV_SMMPT_CHECK_AD_UPDATE,
+} RISCVSMMPTCheckKind;
+
 /*
  * Decode env->mmpt into a functional configuration.
  *
@@ -90,6 +96,19 @@ RISCVSMMPTResult riscv_smmpt_check_access(
     hwaddr pa,
     MMUAccessType access_type,
     int *page_prot);
+
+/*
+ * Record the result of one enforcement-site SmMPT check.
+ *
+ * MPT table-walk and entry-read counts are collected internally by the
+ * walker.  This helper records why the lookup was requested and its outcome.
+ */
+void riscv_smmpt_record_check(
+    CPURISCVState *env,
+    RISCVSMMPTCheckKind kind,
+    RISCVSMMPTResult result);
+
+void riscv_smmpt_reset_stats(CPURISCVState *env);
 
 /* Convert a three-bit SmMPT permission tuple to QEMU PAGE_* protection bits. */
 int riscv_smmpt_perm_to_page_prot(RISCVSMMPTPerm perm);

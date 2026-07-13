@@ -311,6 +311,29 @@ struct CPUArchState {
      */
     target_ulong mmpt;
 
+    /*
+     * SmMPT functional-model statistics.
+     *
+     * These counters are implementation instrumentation rather than
+     * architectural state.  They are currently per-vCPU and are not exposed
+     * to the guest.
+     */
+    struct {
+        uint64_t tlb_fills;
+        uint64_t lookup_requests;
+        uint64_t entry_reads;
+
+        uint64_t final_checks;
+        uint64_t pte_fetch_checks;
+        uint64_t ad_update_checks;
+
+        uint64_t allowed;
+        uint64_t denied;
+        uint64_t bare_skips;
+        uint64_t memory_errors;
+        uint64_t invalid_results;
+    } smmpt_stats;
+
     /* Machine and Supervisor interrupt priorities */
     uint8_t miprio[64];
     uint8_t siprio[64];

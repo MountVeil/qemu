@@ -97,8 +97,11 @@ static RISCVSMMPTResult smmpt_read_entry(CPURISCVState *env,
     MemTxResult result;
     MemTxAttrs attrs = MEMTXATTRS_UNSPECIFIED;
 
+    env->smmpt_stats.entry_reads++;
+
     *entry = address_space_ldq(cs->as, entry_pa, attrs, &result);
     if (result != MEMTX_OK) {
+        env->smmpt_stats.memory_errors++;
         return RISCV_SMMPT_MEMORY_ERROR;
     }
 
@@ -179,6 +182,8 @@ RISCVSMMPTResult riscv_smmpt_lookup(CPURISCVState *env,
     }
 
     memset(lookup, 0, sizeof(*lookup));
+
+    env->smmpt_stats.lookup_requests++;
 
     result = riscv_smmpt_decode_config(env, &config);
     if (result != RISCV_SMMPT_OK) {
@@ -314,6 +319,59 @@ RISCVSMMPTResult riscv_smmpt_check_access(
     }
 
     return RISCV_SMMPT_OK;
+}
+
+void riscv_smmpt_record_check(CPURISCVState *env,
+                              RISCVSMMPTCheckKind kind,
+                              RISCVSMMPTResult result)
+{
+    switch (kind) {
+    case RISCV_SMMPT_CHECK_FINAL:
+        env->smmpt_stats.final_checks++;
+        break;
+    case RISCV_SMMPT_CHECK_PTE_FETCH:
+        env->smmpt_stats.pte_fetch_checks++;
+        break;
+    case RISCV_SMMPT_CHECK_AD_UPDATE:
+        env->smmpt_stats.ad_update_checks++;
+        break;
+    default:
+        g_assert_not_reached();
+    }
+
+    switch (result) {
+    case RISCV_SMMPT_OK:
+        env->smmpt_stats.allowed++;
+        break;
+    case RISCV_SMMPT_BARE:
+        env->smmpt_stats.bare_skips++;
+        break;
+    case RISCV_SMMPT_ACCESS_FAULT:
+        env->smmpt_stats.denied++;
+        break;
+    case RISCV_SMMPT_MEMORY_ERROR:
+        /*
+         * smmpt_read_entry() already records the physical-read error.
+         * It is also a denied access at the enforcement site.
+         */
+        env->smmpt_stats.denied++;
+        break;
+    case RISCV_SMMPT_INVALID_MODE:
+    case RISCV_SMMPT_INVALID_ENTRY:
+    case RISCV_SMMPT_UNSUPPORTED:
+        env->smmpt_stats.invalid_results++;
+        env->smmpt_stats.denied++;
+        break;
+    default:
+        env->smmpt_stats.invalid_results++;
+        env->smmpt_stats.denied++;
+        break;
+    }
+}
+
+void riscv_smmpt_reset_stats(CPURISCVState *env)
+{
+    memset(&env->smmpt_stats, 0, sizeof(env->smmpt_stats));
 }
 
 int riscv_smmpt_perm_to_page_prot(RISCVSMMPTPerm perm)

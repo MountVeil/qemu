@@ -1071,6 +1071,8 @@ restart:
             smmpt_ret = riscv_smmpt_check_access(env, pte_addr,
                                                  MMU_DATA_LOAD,
                                                  &smmpt_prot);
+            riscv_smmpt_record_check(env, RISCV_SMMPT_CHECK_PTE_FETCH,
+                                     smmpt_ret);
 
             if (smmpt_ret == RISCV_SMMPT_OK) {
                 qemu_log_mask(CPU_LOG_MMU,
@@ -1270,6 +1272,8 @@ restart:
         smmpt_ret = riscv_smmpt_check_access(env, pte_addr,
                                              MMU_DATA_STORE,
                                              &smmpt_prot);
+        riscv_smmpt_record_check(env, RISCV_SMMPT_CHECK_AD_UPDATE,
+                                 smmpt_ret);
 
         if (smmpt_ret == RISCV_SMMPT_OK) {
             qemu_log_mask(CPU_LOG_MMU,
@@ -1518,6 +1522,7 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
     hwaddr tlb_size = TARGET_PAGE_SIZE;
 
     env->guest_phys_fault_addr = 0;
+    env->smmpt_stats.tlb_fills++;
 
     qemu_log_mask(CPU_LOG_MMU, "%s ad %" VADDR_PRIx " rw %d mmu_idx %d\n",
                   __func__, address, access_type, mmu_idx);
@@ -1624,6 +1629,8 @@ bool riscv_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
 
         smmpt_ret = riscv_smmpt_check_access(env, pa, access_type,
                                              &prot_smmpt);
+        riscv_smmpt_record_check(env, RISCV_SMMPT_CHECK_FINAL,
+                                 smmpt_ret);
 
         if (smmpt_ret == RISCV_SMMPT_OK) {
             prot &= prot_smmpt;
